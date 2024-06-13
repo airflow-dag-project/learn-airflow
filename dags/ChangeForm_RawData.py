@@ -14,57 +14,62 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id='group_by_office_elt',
+    dag_id='change_raw_data_form',
     default_args=default_args,
-    description='Populate group_by_office table from raw_data_test_youngjun table',
+    description='change raw data date column form from raw_data_test_youngjun table',
     schedule_interval='@daily',
 )
 
-def populate_group_by_office():
+def change_form():
     # Connect to Redshift
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
     
     create_table_query = """
-    DROP TABLE IF EXISTS yusuyeon678.group_by_office;
-    CREATE TABLE yusuyeon678.group_by_office (
+    DROP TABLE IF EXISTS yusuyeon678.raw_data;
+    CREATE TABLE yusuyeon678.raw_data (
         date TIMESTAMP NOT NULL,
+        region_code INT NOT NULL,
+        region_name VARCHAR(20) NOT NULL,
         office_code INT NOT NULL,
         office_name VARCHAR(20) NOT NULL,
         dust FLOAT NOT NULL,
+        dust_24h FLOAT NOT NULL,
         ultradust FLOAT NOT NULL,
         O3 FLOAT NOT NULL,
         NO2 FLOAT NOT NULL,
         CO FLOAT NOT NULL,
         SO2 FLOAT NOT NULL,
-        CONSTRAINT group_by_office_pk PRIMARY KEY (date, office_code)
+        constraint raw_data_pk PRIMARY KEY (date, region_code, region_name, office_code, office_name)
     );
     """
     redshift_hook.run(create_table_query)
     
-    # Query to populate group_by_office_test_suyeon from raw_data_test_youngjun
+    # Query to populate group_by_region_test_suyeon from raw_data_test_youngjun
     sql_query = """
-    INSERT INTO yusuyeon678.group_by_office (date, office_code, office_name, dust, ultradust, O3, NO2, CO, SO2)
+    INSERT INTO yusuyeon678.raw_data (date, region_code, region_name, office_code, office_name, dust, dust_24h, ultradust, O3, NO2, CO, SO2)
     SELECT
-        date,
+        TO_TIMESTAMP(CAST(date AS VARCHAR), 'YYYYMMDDHH24MI') AS date,
+        region_code,
+        region_name,
         office_code,
         office_name,
-        ROUND(AVG(dust), 2) AS dust,
-        ROUND(AVG(ultradust), 2) AS ultradust,
-        ROUND(AVG(o3), 2) AS o3,
-        ROUND(AVG(no2), 2) AS no2,
-        ROUND(AVG(co), 2) AS co,
-        ROUND(AVG(so2), 3) AS so2
-    FROM yusuyeon678.raw_data
-    GROUP BY date, office_code, office_name;
+        dust,
+        dust_24h,
+        ultradust,
+        O3,
+        NO2,
+        CO,
+        SO2
+    FROM yusuyeon678.raw_data_test_youngjun;
     """
     
     # Execute the query
     redshift_hook.run(sql_query)
 
-populate_task = PythonOperator(
-    task_id='populate_group_by_office_task',
-    python_callable=populate_group_by_office,
+change_form_task = PythonOperator(
+    task_id='change_raw_data_date_column_form',
+    python_callable=change_form,
     dag=dag,
 )
 
-populate_task
+change_form_task

@@ -45,7 +45,7 @@ def populate_group_by_region():
     sql_query = """
     INSERT INTO yusuyeon678.group_by_region (date, region_code, region_name, dust, ultradust, O3, NO2, CO, SO2)
     SELECT
-        TO_TIMESTAMP(CAST(date AS VARCHAR), 'YYYYMMDDHH24MI') AS date,
+        date,
         region_code,
         region_name,
         ROUND(AVG(dust), 2) AS dust,
@@ -54,7 +54,7 @@ def populate_group_by_region():
         ROUND(AVG(no2), 2) AS no2,
         ROUND(AVG(co), 2) AS co,
         ROUND(AVG(so2), 3) AS so2
-    FROM yusuyeon678.raw_data_test_youngjun
+    FROM yusuyeon678.raw_data
     GROUP BY date, region_code, region_name;
     """
     

@@ -37,9 +37,9 @@ def populate_seoul_dust_summary():
     sql_query = """
     INSERT INTO yusuyeon678.seoul_dust_summary (date, dust)
     SELECT
-        TO_TIMESTAMP(CAST(date AS VARCHAR), 'YYYYMMDDHH24MI') AS date,
+        date,
         ROUND(AVG(dust), 2) AS dust
-    FROM yusuyeon678.raw_data_test_youngjun
+    FROM yusuyeon678.raw_data
     GROUP BY date;
     """
     
