@@ -70,7 +70,10 @@ def fetch_data_from_api():
     return file_path
 
 def create_raw_data_temp_table():
+    # redshift 연결
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
+    
+    # api_raw_data_temp 테이블 생성
     create_table_sql = """
     CREATE TABLE IF NOT EXISTS yusuyeon678.api_raw_data_temp (
         date BIGINT NOT NULL,
@@ -90,9 +93,12 @@ def create_raw_data_temp_table():
     redshift_hook.run(create_table_sql)
 
 def load_data_into_raw_data_temp():
+    # redshift 연결
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
     aws_hook = S3Hook(aws_conn_id='aws_s3')
     credentials = aws_hook.get_credentials()
+    
+    # s3로부터 데이터 copy해오기
     load_sql = f"""
     COPY yusuyeon678.api_raw_data_temp
     FROM 's3://dust-dag/dataSource/api_raw_data.csv'
@@ -104,6 +110,7 @@ def load_data_into_raw_data_temp():
     redshift_hook.run(load_sql)
 
 def deduplicate_and_insert_data():
+    # redshift 연결
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
     conn = redshift_hook.get_conn()
     cursor = conn.cursor()
@@ -127,9 +134,10 @@ def deduplicate_and_insert_data():
     conn.close()
 
 def convert_date_format():
-    # Connect to Redshift
+    # redshift 연결
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
     
+    # raw_data 삭제 후, 재생성
     create_table_query = """
     DROP TABLE IF EXISTS yusuyeon678.raw_data;
     CREATE TABLE yusuyeon678.raw_data (
@@ -150,7 +158,7 @@ def convert_date_format():
     """
     redshift_hook.run(create_table_query)
     
-    # Query to populate group_by_region_test_suyeon from raw_data_test_youngjun
+    # date 컬럼의 형식 변경 후, raw_data_temp 테이블에서부터 raw_data로 데이터 복제
     sql_query = """
     INSERT INTO yusuyeon678.raw_data (date, region_code, region_name, office_code, office_name, dust, dust_24h, ultradust, O3, NO2, CO, SO2)
     SELECT
@@ -169,13 +177,13 @@ def convert_date_format():
     FROM yusuyeon678.raw_data_test_youngjun;
     """
     
-    # Execute the query
     redshift_hook.run(sql_query)
 
 def populate_region_table():
-    # Connect to Redshift
+    # redshift 연결
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
     
+    # group_by_region 테이블 삭제 후, 재생성
     create_table_query = """
     DROP TABLE IF EXISTS yusuyeon678.group_by_region;
     CREATE TABLE yusuyeon678.group_by_region (
@@ -193,7 +201,7 @@ def populate_region_table():
     """
     redshift_hook.run(create_table_query)
     
-    # Query to populate group_by_region_test_suyeon from raw_data_test_youngjun
+    # raw_data 테이블로부터 데이터를 가져와 지역별, 시간별로 그룹 지어 평균 낸 group_by_region 테이블 생성
     sql_query = """
     INSERT INTO yusuyeon678.group_by_region (date, region_code, region_name, dust, ultradust, O3, NO2, CO, SO2)
     SELECT
@@ -210,13 +218,13 @@ def populate_region_table():
     GROUP BY date, region_code, region_name;
     """
     
-    # Execute the query
     redshift_hook.run(sql_query)
 
 def populate_office_table():
-    # Connect to Redshift
+    # redshift 연결
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
     
+    # group_by_office 테이블 삭제 후, 재생성
     create_table_query = """
     DROP TABLE IF EXISTS yusuyeon678.group_by_office;
     CREATE TABLE yusuyeon678.group_by_office (
@@ -234,7 +242,7 @@ def populate_office_table():
     """
     redshift_hook.run(create_table_query)
     
-    # Query to populate group_by_office_test_suyeon from raw_data_test_youngjun
+    # raw_data 테이블로부터 데이터를 가져와 측정소별, 시간별로 그룹 지어 평균 낸 group_by_office 테이블 생성
     sql_query = """
     INSERT INTO yusuyeon678.group_by_office (date, office_code, office_name, dust, ultradust, O3, NO2, CO, SO2)
     SELECT
@@ -251,13 +259,13 @@ def populate_office_table():
     GROUP BY date, office_code, office_name;
     """
     
-    # Execute the query
     redshift_hook.run(sql_query)
 
 def populate_dust_summary_table():
-    # Connect to Redshift
+    # redshift 연결
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
     
+    # seoul_dust_summary 테이블 삭제 후, 재생성
     create_table_query = """
     DROP TABLE IF EXISTS yusuyeon678.seoul_dust_summary;
     CREATE TABLE yusuyeon678.seoul_dust_summary (
@@ -267,7 +275,7 @@ def populate_dust_summary_table():
     """
     redshift_hook.run(create_table_query)
     
-    # Query to populate seoul_dust_summary_test_suyeon from raw_data_test_youngjun
+    # raw_data 테이블로부터 데이터를 가져와 시간별로 미세먼지의 평균량을 제공하는 seoul_dust_summary 테이블 생성
     sql_query = """
     INSERT INTO yusuyeon678.seoul_dust_summary (date, dust)
     SELECT
@@ -277,13 +285,13 @@ def populate_dust_summary_table():
     GROUP BY date;
     """
     
-    # Execute the query
     redshift_hook.run(sql_query)
 
 def populate_ultradust_summary_table():
-    # Connect to Redshift
+    # redshift 연결
     redshift_hook = PostgresHook(postgres_conn_id='redshift_test_dev')
     
+    # seoul_ultradust_summary 테이블 삭제 후, 재생성
     create_table_query = """
     DROP TABLE IF EXISTS yusuyeon678.seoul_ultradust_summary;
     CREATE TABLE yusuyeon678.seoul_ultradust_summary (
@@ -293,7 +301,7 @@ def populate_ultradust_summary_table():
     """
     redshift_hook.run(create_table_query)
     
-    # Query to populate seoul_ultradust_summary_test_suyeon from raw_data_test_youngjun
+    # raw_data 테이블로부터 데이터를 가져와 시간별로 초미세먼지의 평균량을 제공하는 seoul_dust_summary 테이블 생성
     sql_query = """
     INSERT INTO yusuyeon678.seoul_ultradust_summary (date, ultradust)
     SELECT
@@ -303,9 +311,9 @@ def populate_ultradust_summary_table():
     GROUP BY date;
     """
     
-    # Execute the query
     redshift_hook.run(sql_query)
 
+# s3 용량 관리를 위해 주기적으로 s3 데이터 삭제
 def delete_s3_files():
     s3_hook = S3Hook(aws_conn_id='aws_s3')
     s3_hook.delete_objects(bucket='dust-dag', keys='dataSource/api_raw_data.csv')
@@ -326,7 +334,7 @@ with dag:
                 dest_bucket='dust-dag',
                 dest_key='dataSource/api_raw_data.csv',
                 aws_conn_id='aws_s3',
-                replace=True  # Overwrite existing file if present
+                replace=True  # 해당 파일이 이미 존재한다면, 덮어 쓰기
             )
 
             fetch_data_task >> upload_to_s3_task
