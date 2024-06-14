@@ -1,11 +1,10 @@
 from airflow import DAG
-from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
-from airflow.hooks.postgres_hook import PostgresHook
-from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.operators.python_operator import PythonOperator
 from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemToS3Operator
-
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from airflow.hooks.postgres_hook import PostgresHook
+from airflow.utils.dates import days_ago
 import pandas as pd
 import requests
 import datetime
@@ -323,7 +322,7 @@ with dag:
 
             upload_to_s3_task = LocalFilesystemToS3Operator(
                 task_id='upload_data_to_s3',
-                filename="{{ task_instance.xcom_pull(task_ids='fetch_data_from_api') }}",
+                filename="{{ task_instance.xcom_pull(task_ids='ELT.data_extraction.fetch_data_from_api') }}",
                 dest_bucket='dust-dag',
                 dest_key='dataSource/api_raw_data.csv',
                 aws_conn_id='aws_s3',
